@@ -10,6 +10,7 @@ const typeDefs = gql`
     id: ID!
     title: String!
     completed: Boolean!
+    listId: ID!
   }
 
   type List {
@@ -37,16 +38,15 @@ const typeDefs = gql`
 `;
 
 // -----------------
-// 2. Define Resolvers
-// ------------------
-
+// 2. Mock Data Store
+// -----------------
 let boards: {
   id: string;
   title: string;
   lists: {
     id: string;
     title: string;
-    tasks: { id: string; title: string; completed: boolean }[];
+    tasks: { id: string; title: string; completed: boolean; listId: string }[];
   }[];
 }[] = [
   {
@@ -54,34 +54,31 @@ let boards: {
     title: "Personal",
     lists: [
       { id: "1", title: "To Do", tasks: [] },
-      { id: "2", title: "Done", tasks: [] },
+      { id: "2", title: "In Progress", tasks: [] },
+      { id: "3", title: "Done", tasks: [] },
     ],
   },
   {
     id: "2",
     title: "Work",
     lists: [
-      { id: "3", title: "Backlog", tasks: [] },
-      { id: "4", title: "In Progress", tasks: [] },
-    ],
-  },
-  {
-    id: "3",
-    title: "Projects",
-    lists: [
-      { id: "5", title: "Ideas", tasks: [] },
-      { id: "6", title: "Completed", tasks: [] },
+      { id: "4", title: "To Do", tasks: [] },
+      { id: "5", title: "In Progress", tasks: [] },
+      { id: "6", title: "Done", tasks: [] },
     ],
   },
 ];
 
+// -----------------
+// 3. Resolvers
+// -----------------
 const resolvers = {
   Query: {
     boards: () => boards,
   },
   Mutation: {
     addBoard: (_: any, { title }: { title: string }) => {
-      const newBoard = { id: String(boards.length + 1), title, lists: [] };
+      const newBoard = { id: String(Date.now()), title, lists: [] };
       boards.push(newBoard);
       return newBoard;
     },
@@ -91,42 +88,40 @@ const resolvers = {
     ) => {
       const board = boards.find((b) => b.id === boardId);
       if (!board) throw new Error("Board not found");
-      const newList = { id: String(board.lists.length + 1), title, tasks: [] };
+
+      const newList = { id: String(Date.now()), title, tasks: [] };
       board.lists.push(newList);
       return newList;
     },
     addTask: (_: any, { listId, title }: { listId: string; title: string }) => {
-      for (const board of boards) {
-        const list = board.lists.find((l) => l.id === listId);
-        if (list) {
-          const newTask = {
-            id: String(list.tasks.length + 1),
-            title,
-            completed: false,
-          };
-          list.tasks.push(newTask);
-          return newTask;
-        }
-      }
-      throw new Error("List not found");
+      const list = boards.flatMap((b) => b.lists).find((l) => l.id === listId);
+      if (!list) throw new Error("List not found");
+
+      const newTask = {
+        id: String(Date.now()),
+        title,
+        completed: false,
+        listId,
+      };
+      list.tasks.push(newTask);
+      return newTask;
     },
     toggleTask: (_: any, { id }: { id: string }) => {
-      for (const board of boards) {
-        for (const list of board.lists) {
-          const task = list.tasks.find((t) => t.id === id);
-          if (task) {
-            task.completed = !task.completed;
-            return task;
-          }
-        }
+      const task = boards
+        .flatMap((b) => b.lists)
+        .flatMap((l) => l.tasks)
+        .find((t) => t.id === id);
+
+      if (task) {
+        task.completed = !task.completed;
       }
-      return null;
+      return task;
     },
   },
 };
 
 // -----------------
-// 3. Start Server
+// 4. Start Server
 // -----------------
 async function startServer() {
   const app = express();
