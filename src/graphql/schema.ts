@@ -27,7 +27,7 @@ export const typeDefs = gql`
     id: ID!
     title: String!
     lists: [List!]!
-    userId: ID!
+    userId: ID! # owner of the board
   }
 
   type Query {

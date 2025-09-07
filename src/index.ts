@@ -4,22 +4,25 @@ dotenv.config();
 console.log("Mongo URI from env:", process.env.MONGO_URI);
 
 import express from "express";
+import cors from "cors"; // ✅ added
 import { ApolloServer } from "apollo-server-express";
 import { typeDefs } from "./graphql/schema";
 import { resolvers } from "./graphql/resolvers";
 import { getUserFromToken } from "./auth";
-import { connectDB } from "./mongodb"; // Import your MongoDB connect function
+import { connectDB } from "./mongodb";
 
 async function startServer() {
-  // Connect to MongoDB before starting the server
+  // ✅ Ensure DB connects before server start
   await connectDB();
 
   const app = express();
+  app.use(cors()); // ✅ added to avoid CORS issues
 
   const server = new ApolloServer({
     typeDefs,
     resolvers,
     context: ({ req }) => {
+      // ✅ req is passed correctly
       const user = getUserFromToken(req);
       return { user };
     },
